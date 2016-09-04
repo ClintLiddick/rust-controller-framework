@@ -1,0 +1,11 @@
+[package]
+name = "rust_controllers"
+version = "0.1.0"
+authors = ["Clint Liddick <clint.liddick@gmail.com>"]
+
+[dependencies]
+# glutin = "*"
+cgmath = "*"
+glium = "*"
+glium_text = "*"
+rand = "*"
