@@ -2,12 +2,9 @@ pub static VERT_SHADER_SRC: &'static str = r#"
     #version 330
 
     in vec2 position;
-    uniform float t;
     uniform mat4 Pmat;
 
     void main() {
-        //vec2 pos = position;
-        //pos.x += t;
         gl_Position = Pmat * vec4(position, 0.0, 1.0);
     }
     "#;

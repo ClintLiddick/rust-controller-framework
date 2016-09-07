@@ -16,7 +16,7 @@ fn main() {
     use glium::{DisplayBuild, Surface};
     let display = glium::glutin::WindowBuilder::new()
         .with_dimensions(1024, 768)
-        .with_title(format!("Hello world"))
+        .with_title("Hello world")
         .build_glium()
         .unwrap();
     let shader_prog = glium::Program::from_source(&display,
@@ -29,42 +29,41 @@ fn main() {
 
     let ten_millis = time::Duration::from_millis(10);
 
-    // let vert1 = Vertex { position: [10.0, 5.0] };
-    let mut points: Vec<Vertex> = Vec::with_capacity(2);
-    points.push(Vertex { position: [10.0, 5.0] });
-    let vert_buffer = glium::VertexBuffer::dynamic(&display, &points).unwrap();
+    const MAX_NUM_VERTS: usize = 10;
+    let mut points: Vec<Vertex> = Vec::with_capacity(MAX_NUM_VERTS);
+    // fill with dummy points to get correct VBO size
+    points.resize(MAX_NUM_VERTS, Vertex { position: [-1.0, -1.0] });
+    let mut vert_buffer = glium::VertexBuffer::dynamic(&display, &points).unwrap();
+    let mut next_vert_idx = 0;
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::Points);
-
 
     // let txt_sys = glium_text::TextSystem::new(&display);
     // let font = glium_text::FontTexture::new(&display, &include_bytes!("FreeMono.ttf")[..], 70)
     //     .unwrap();
     // let text = glium_text::TextDisplay::new(&txt_sys, &font, "1.0");
 
-    let mut t: f32 = 0.0;
-    // let mut counter = 0;
-    // let mut rng = rand::thread_rng();
+    let mut time_from_start: f32 = 0.0;
+    let mut counter = 0;
 
     loop {
-        // counter += 1;
-        // if counter == 100 {
-        //     counter = 0;
-        //     // let mut mapping = vert_buffer.map_write();
-        //     let new_vert = Vertex { position: [10.0, rng.gen_range(1f32, 10.)] };
-        //     vert_buffer.write(&[new_vert]);
-        //     println!("writing to vert buffer");
-        //     // TODO set x, y correctly, and vary the x->timeline mapping (ortho?)
-        //     // mapping.set(0, Vertex { position: [10.0, 5.0] });
-        // }
-
-        // t -= 0.01;
-        // if t < 0. {
-        //     t = 10.0;
-        // }
-        t += 0.01;
+        time_from_start += 0.01;
+        counter += 1;
+        if counter == 100 {
+            counter = 0;
+            let mut vert_map = vert_buffer.map_write();
+            vert_map.set(next_vert_idx,
+                         Vertex { position: [10.0 + time_from_start, 5.0] });
+            next_vert_idx = (next_vert_idx + 1) % MAX_NUM_VERTS;  // ring buffer
+            println!("writing to vert buffer");
+        }
 
         // let (w, h) = display.get_framebuffer_dimensions();
-        let sliding_projection: [[f32; 4]; 4] = cgmath::ortho(0f32 + t, 10. + t, 0., 10., -1., 1.)
+        let sliding_projection: [[f32; 4]; 4] = cgmath::ortho(0f32 + time_from_start,
+                                                              10. + time_from_start,
+                                                              0.,
+                                                              10.,
+                                                              -1.,
+                                                              1.)
             .into();
         // let projection_mat: [[f32; 4]; 4] = projection.into();
 
@@ -73,7 +72,7 @@ fn main() {
         frame.draw(&vert_buffer,
                   &indices,
                   &shader_prog,
-                  &uniform!{t: t, Pmat: sliding_projection},
+                  &uniform!{Pmat: sliding_projection},
                   &draw_params)
             .unwrap();
         frame.finish().unwrap();
