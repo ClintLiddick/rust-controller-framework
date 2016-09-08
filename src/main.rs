@@ -6,12 +6,16 @@ extern crate cgmath;
 #[macro_use]
 extern crate glium;
 // extern crate glium_text;
-// extern crate rand;
+extern crate rand;
 
 use std::{thread, time};
-// use rand::Rng;
+use rand::Rng;
 
 fn main() {
+    const RED: [f32; 4] = [1., 0., 0., 1.];
+    const BLACK: [f32; 4] = [0., 0., 0., 1.];
+
+    const MAX_NUM_VERTS: usize = 10;
 
     use glium::{DisplayBuild, Surface};
     let display = glium::glutin::WindowBuilder::new()
@@ -24,18 +28,28 @@ fn main() {
                                                   shaders::FRAG_SHADER_SRC,
                                                   None)
         .unwrap();
+    let line_shader_prog = glium::Program::from_source(&display,
+                                                       shaders::LINE_VERT_SHADER_SRC,
+                                                       shaders::FRAG_SHADER_SRC,
+                                                       None)
+        .unwrap();
     let mut draw_params: glium::DrawParameters = Default::default();
-    draw_params.point_size = Some(10f32);
+    draw_params.point_size = Some(8f32);
 
     let ten_millis = time::Duration::from_millis(10);
+    let mut rng = rand::thread_rng();
 
-    const MAX_NUM_VERTS: usize = 10;
     let mut points: Vec<Vertex> = Vec::with_capacity(MAX_NUM_VERTS);
     // fill with dummy points to get correct VBO size
-    points.resize(MAX_NUM_VERTS, Vertex { position: [-1.0, -1.0] });
+    points.resize(MAX_NUM_VERTS, Vertex { position: [-1.0, -100.0] });
     let mut vert_buffer = glium::VertexBuffer::dynamic(&display, &points).unwrap();
     let mut next_vert_idx = 0;
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::Points);
+
+    let line_vbo = glium::VertexBuffer::persistent(&display,
+                                                   &[Vertex { position: [-1.0, 0.0] },
+                                                     Vertex { position: [1.0, 0.0] }]).unwrap();
+    let line_indices = glium::index::NoIndices(glium::index::PrimitiveType::LinesList);
 
     // let txt_sys = glium_text::TextSystem::new(&display);
     // let font = glium_text::FontTexture::new(&display, &include_bytes!("FreeMono.ttf")[..], 70)
@@ -52,7 +66,7 @@ fn main() {
             counter = 0;
             let mut vert_map = vert_buffer.map_write();
             vert_map.set(next_vert_idx,
-                         Vertex { position: [10.0 + time_from_start, 5.0] });
+                         Vertex { position: [10.0 + time_from_start, rng.gen_range(-5f32, 5.)] });
             next_vert_idx = (next_vert_idx + 1) % MAX_NUM_VERTS;  // ring buffer
             println!("writing to vert buffer");
         }
@@ -60,8 +74,8 @@ fn main() {
         // let (w, h) = display.get_framebuffer_dimensions();
         let sliding_projection: [[f32; 4]; 4] = cgmath::ortho(0f32 + time_from_start,
                                                               10. + time_from_start,
-                                                              0.,
-                                                              10.,
+                                                              -5.,
+                                                              5.,
                                                               -1.,
                                                               1.)
             .into();
@@ -69,10 +83,16 @@ fn main() {
 
         let mut frame = display.draw();
         frame.clear_color(0.9, 0.9, 0.9, 1.0);
+        frame.draw(&line_vbo,
+                  &line_indices,
+                  &line_shader_prog,
+                  &uniform!{vert_color: BLACK},
+                  &draw_params)
+            .unwrap();
         frame.draw(&vert_buffer,
                   &indices,
                   &shader_prog,
-                  &uniform!{Pmat: sliding_projection},
+                  &uniform!{vert_color: RED, Pmat: sliding_projection},
                   &draw_params)
             .unwrap();
         frame.finish().unwrap();
